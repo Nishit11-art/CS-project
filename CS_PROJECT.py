@@ -1,32 +1,71 @@
 import streamlit as st
+import sqlite3
 
-def understand(text):
-    text = text.lower()
+st.title("📱 Smart Phone Recommender System")
 
-    ram, storage, battery = 4, 64, 4000
+# -----------------------------
+# 🧠 STEP 1: ASK USER INPUTS
+# -----------------------------
+ram = st.selectbox("RAM", [None, 4, 6, 8, 12, 16])
+storage = st.selectbox("Storage", [None, 64, 128, 256, 512])
+battery = st.selectbox("Battery", [None, 4000, 4500, 5000, 6000])
+camera = st.selectbox("Camera (MP)", [None, 12, 50, 64, 108, 200])
+tag = st.selectbox("Use Case", [None, "gaming", "camera", "budget", "premium"])
 
-    if "gaming" in text:
-        ram = 8
-        storage = 128
-        battery = 5000
+# -----------------------------
+# 🗄️ STEP 2: QUERY DATABASE
+# -----------------------------
+def get_phones():
+    conn = sqlite3.connect("phones.db")
+    cursor = conn.cursor()
 
-    if "intense gaming" in text:
-        ram = 12
-        storage = 256
-        battery = 6000
+    query = "SELECT * FROM phones WHERE 1=1"
+    params = []
 
-    return ram, storage, battery
+    if ram:
+        query += " AND ram >= ?"
+        params.append(ram)
 
+    if storage:
+        query += " AND storage >= ?"
+        params.append(storage)
 
-st.title("📱 Phone Recommender AI")
+    if battery:
+        query += " AND battery >= ?"
+        params.append(battery)
 
-user_input = st.text_input("What do you need the phone for?")
+    if camera:
+        query += " AND camera >= ?"
+        params.append(camera)
 
-if user_input:
-    ram, storage, battery = understand(user_input)
+    if tag:
+        query += " AND tags LIKE ?"
+        params.append(f"%{tag}%")
 
-    st.write("### Recommended Specs:")
-    st.write(f"RAM: {ram} GB")
-    st.write(f"Storage: {storage} GB")
-    st.write(f"Battery: {battery} mAh")
-    
+    cursor.execute(query, params)
+    results = cursor.fetchall()
+
+    conn.close()
+    return results
+
+# -----------------------------
+# 🚀 STEP 3: SHOW RESULTS
+# -----------------------------
+if st.button("Find Phones"):
+    phones = get_phones()
+
+    if phones:
+        st.subheader("📱 Matching Phones")
+
+        for p in phones:
+            st.markdown(f"""
+            ### {p[1]}
+            - RAM: {p[2]} GB  
+            - Storage: {p[3]} GB  
+            - Battery: {p[4]} mAh  
+            - Camera: {p[5]} MP  
+            - Screen: {p[6]} inch  
+            - Tags: {p[7]}
+            """)
+    else:
+        st.warning("No matching phones found. Try relaxing requirements.")
